@@ -11,12 +11,19 @@
 CMainWindow::CMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , mNetworkManager (new QNetworkAccessManager(this))
+    , mOrderBookWindow(nullptr)
     , mIsUserSearch(false)
 {
     qDebug() << "CMainWindow::CMainWindow()";
 
-    QWidget *central = new QWidget(this);
-    QVBoxLayout *layout = new QVBoxLayout(central);
+    auto *central = new QWidget(this);
+    auto *layout = new QVBoxLayout(central);
+
+    mTextLine = new QLineEdit(this);
+    mTextLine->setPlaceholderText("Enter crypto to search data for...");
+
+    layout->addWidget(mTextLine);
+
     mTableWidget = new QTableWidget(0, 6, this);
     mTableWidget->setHorizontalHeaderLabels(
         {"Instrument",
@@ -27,12 +34,8 @@ CMainWindow::CMainWindow(QWidget *parent)
          "Best ASK Qty"});
     mTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
-    mTextLine = new QLineEdit(this);
-    mTextLine->setPlaceholderText("Enter crypto to search data for...");
-
-    layout->addWidget(mTextLine);
-
     layout->addWidget(mTableWidget);
+
     setCentralWidget(central);
     resize(600, 400);
     setWindowTitle("OKX Market Data");
@@ -83,10 +86,7 @@ void CMainWindow::subscribeToTicker(const QString &instId)
         }}
     };
 
-    QJsonDocument doc(subObj);
-    QString jsonString = doc.toJson(QJsonDocument::Compact);
-
-    mWebSocket.sendTextMessage(jsonString);
+    sendWebSocketMessage(subObj);
     mSubscribedTickers.insert(instId);
     qDebug() << "Subscribed to ticker for" << instId;
 }
@@ -105,10 +105,7 @@ void CMainWindow::unsubscribeFromTicker(const QString &instId)
         }}
     };
 
-    QJsonDocument doc(unsub);
-    QString jsonString = doc.toJson(QJsonDocument::Compact);
-
-    mWebSocket.sendTextMessage(jsonString);
+    sendWebSocketMessage(unsub);
     qDebug() << "Unsubscribed from ticker:" << instId;
 }
 
@@ -116,7 +113,7 @@ void CMainWindow::subscribeToOderBook(const QString &instId)
 {
     qDebug() << "CMainWindow::subscribeToOderBook(): " << instId;
 
-    QJsonObject subObj {
+    QJsonObject sub {
         {"op", "subscribe"},
         {"args", QJsonArray{
             QJsonObject{
@@ -126,11 +123,7 @@ void CMainWindow::subscribeToOderBook(const QString &instId)
         }}
     };
 
-    QJsonDocument doc(subObj);
-    QString jsonString = doc.toJson(QJsonDocument::Compact);
-
-    mWebSocket.sendTextMessage(jsonString);
-    mSubscribedTickers.insert(instId);
+    sendWebSocketMessage(sub);
     qDebug() << "Subscribed to ticker for" << instId;
 }
 
@@ -138,7 +131,26 @@ void CMainWindow::unsubscribeFromOrderBook(const QString &instId)
 {
     qDebug() << "CMainWindow::unsubscribeFromOrderBook(): "<< instId;
 
+    QJsonObject unsub{
+        {"op", "unsubscribe"},
+        {"args", QJsonArray{
+            QJsonObject{
+                {"channel", "books"},
+                {"instId", instId}
+            }
+        }}
+    };
 
+    sendWebSocketMessage(unsub);
+    qDebug() << "Unsubscribed from ticker:" << instId;
+}
+
+void CMainWindow::sendWebSocketMessage(const QJsonObject &subAction)
+{
+    QJsonDocument doc(subAction);
+    QString jsonString = doc.toJson(QJsonDocument::Compact);
+
+    mWebSocket.sendTextMessage(jsonString);
 }
 
 void CMainWindow::onLineEditTextFinished()
@@ -147,7 +159,7 @@ void CMainWindow::onLineEditTextFinished()
     
     if ("" != mTextLine->text()) {
         mIsUserSearch = true;
-        mTableWidget->setRowCount(0);
+        // mTableWidget->setRowCount(0);
         rbTreeSearch(mInstrumentArr);
     } else {
         qDebug() << "Field is empty. No search will be done";
@@ -158,15 +170,6 @@ void CMainWindow::onLineEditTextFinished()
         }
         mIsUserSearch = false;
     }
-}
-
-void CMainWindow::onTableCellClicked(int row, int column)
-{
-    qDebug() << "CMainWindow::onTableCellClicked(): Row clicked:"
-             << row << "Column:" << column;
-
-    QTableWidgetItem* item = mTableWidget->item(row, column);
-    
 }
 
 void CMainWindow::onConnected()
@@ -180,7 +183,7 @@ void CMainWindow::onConnected()
 
 void CMainWindow::onTextMessageReceived(const QString &message)
 {
-    qDebug() << "CMainWindow::onTextMessageReceived()";
+    // qDebug() << "CMainWindow::onTextMessageReceived()";
     
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8(), &parseError);
@@ -196,6 +199,7 @@ void CMainWindow::onTextMessageReceived(const QString &message)
     }
 
     QJsonObject obj = doc.object();
+    QJsonObject argObj = obj["arg"].toObject();
     if (obj.contains("event") && "error" == obj["event"].toString()) {
         qDebug() << "CMainWindow::onTextMessageReceived(): Event:" \
                  << obj["event"].toString();
@@ -214,15 +218,52 @@ void CMainWindow::onTextMessageReceived(const QString &message)
 
     QString lInstId = "N/A";
 
-     if (obj.contains("data")) {
+    if (obj.contains("data")) {
         QJsonArray dataArray = obj["data"].toArray();
         if (!dataArray.isEmpty()) {
-            for (const QJsonValue &value : dataArray) {
-                obj = value.toObject();
-                lInstId = obj["instId"].toString();
-                mInstrumentArr[lInstId] = obj;
+            if ("books" == argObj["channel"].toString() &&
+                nullptr != mOrderBookWindow)
+            {
+                mOrderBookWindow->parseJsonObj(dataArray);
+            } else {
+                for (const QJsonValue &value : dataArray) {
+                    obj = value.toObject();
+                    lInstId = obj["instId"].toString();
+                    mInstrumentArr[lInstId] = obj;
+                }
             }
         }
+    }
+}
+
+void CMainWindow::onTableCellClicked(int row, int /*column*/)
+{
+    qDebug() << "CMainWindow::onTableCellClicked(): Row clicked:"
+             << row;
+
+    unsubscribeFromOrderBook(mOrderBookInstId);
+
+    QTableWidgetItem* item = mTableWidget->item(row, 0);
+    
+    mOrderBookInstId = item->text();
+
+    subscribeToOderBook(mOrderBookInstId);
+
+    if (!mOrderBookWindow) {
+        mOrderBookWindow = new COrderBookWindow();
+        mOrderBookWindow->setLabel(mOrderBookInstId);
+        mOrderBookWindow->setAttribute(Qt::WA_DeleteOnClose);
+        mOrderBookWindow->show();
+        
+        connect(mOrderBookWindow, &COrderBookWindow::windowClosed,
+                this, [this](const QString &mOrderBookInstId) {
+            unsubscribeFromOrderBook(mOrderBookInstId);
+            mOrderBookWindow = nullptr;
+        });
+    } else {
+        mOrderBookWindow->setLabel(mOrderBookInstId);
+        mOrderBookWindow->raise();
+        mOrderBookWindow->activateWindow();
     }
 }
 
@@ -283,7 +324,7 @@ void CMainWindow::updateDefaultTableView()
     for (it = mInstrumentArr.begin(); counter < dataSize; ++it) {
         if (mSubscribedTickers.contains(it->first)) {
             fillTable(it->second, counter);
-            counter++;
+            ++counter;
         }
     }
 }
@@ -297,7 +338,7 @@ void CMainWindow::rbTreeSearch(const std::map<QString, QJsonObject>& data)
     nextPrefix[nextPrefix.size() - 1] = QChar(nextPrefix.back().unicode() + 1); // Next lexicographic string
 
     auto itStart = data.lower_bound(prefix);
-    auto itEnd   = data.upper_bound(nextPrefix); // not upper_bound, because QString is custom
+    auto itEnd   = data.upper_bound(nextPrefix);
 
     int8_t counter = 0;
     for (auto it = itStart; it != itEnd; ++it) {
@@ -305,7 +346,7 @@ void CMainWindow::rbTreeSearch(const std::map<QString, QJsonObject>& data)
         if (!mSubscribedTickers.contains(it->first)) {
             subscribeToTicker(it->first);
             fillTable(it->second, counter);
-            ++counter;
+            counter++;
         }
     }
 }

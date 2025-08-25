@@ -1,6 +1,8 @@
 #ifndef CMAINWINDOW_HPP
 #define CMAINWINDOW_HPP
 
+#include "COrderBookWindow.hpp"
+
 #include <QMainWindow>
 #include <QNetworkAccessManager>
 #include <QTableWidget>
@@ -30,6 +32,9 @@ private:
     QTableWidget *mTableWidget;
     QLineEdit *mTextLine;
     QWebSocket mWebSocket;
+    QString mOrderBookInstId;
+
+    COrderBookWindow* mOrderBookWindow;
 
     bool mIsUserSearch;
 
@@ -37,6 +42,7 @@ private:
     std::map<QString, QJsonObject> mInstrumentArr;
 
     void fetchData();
+    void sendWebSocketMessage(const QJsonObject &subAction);
     void startInternalTimer();
     void updateDefaultTableView();
     void subscribeToTicker(const QString &instId);
@@ -45,7 +51,6 @@ private:
     void unsubscribeFromOrderBook(const QString &instId);
     void rbTreeSearch(const std::map<QString, QJsonObject>& data);
     void fillTable(const QJsonObject& obj, const size_t& rowNum);
-    void fillOrderBookTable(const QJsonObject& obj, const size_t& rowNum);
 };
 
 #endif // CMAINWINDOW_HPP

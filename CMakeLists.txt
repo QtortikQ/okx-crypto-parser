@@ -26,6 +26,8 @@ qt_add_executable(okx_price_viewer
     source/main.cpp
     source/CMainWindow.cpp
     source/CMainWindow.hpp
+    source/COrderBookWindow.cpp
+    source/COrderBookWindow.hpp
     #source/CCryptoPair.hpp
     #source/ui/MainWindow.ui
     #source/ui/CryptoPairWindow.ui
