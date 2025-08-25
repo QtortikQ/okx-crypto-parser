@@ -1,5 +1,7 @@
 
 #include "COrderBookWindow.hpp"
+#include "common/consts.hpp"
+
 #include <QVBoxLayout>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -46,24 +48,45 @@ void COrderBookWindow::parseJsonObj(const QJsonArray& dataArray)
 
 void COrderBookWindow::fillTable(const QJsonArray& bids, const QJsonArray& asks)
 {
-    int rowCount = std::max(bids.size(), asks.size());
+    int rowCount = std::min(NotAMagicJustNums::ROW_UPPER_LIMIT, 
+        static_cast<int>(std::max(bids.size(), asks.size())));
     
     mTableWidget->setRowCount(rowCount);
 
-    for (int i = 0; i < rowCount; ++i) {
-        if (i < bids.size()) {
-            QJsonArray bidEntry = bids[i].toArray();
+    for (int rowNum = 0; rowNum < rowCount; ++rowNum) {
+        QTableWidgetItem *bidQtyItem = nullptr;
+        QTableWidgetItem *bidPriceItem = nullptr;
+        QTableWidgetItem *askPriceItem = nullptr;
+        QTableWidgetItem *askQtyItem = nullptr;
+
+        if (rowNum < bids.size()) {
+            QJsonArray bidEntry = bids[rowNum].toArray();
             QString bidPrice = bidEntry[0].toString();
             QString bidQty = bidEntry[1].toString();
-            mTableWidget->setItem(i, 0, new QTableWidgetItem(bidQty));
-            mTableWidget->setItem(i, 1, new QTableWidgetItem(bidPrice));
+            bidQtyItem = new QTableWidgetItem(bidQty);
+            bidPriceItem = new QTableWidgetItem(bidPrice);
+            mTableWidget->setItem(rowNum, 0, bidQtyItem);
+            mTableWidget->setItem(rowNum, 1, bidPriceItem);
         }
-        if (i < asks.size()) {
-            QJsonArray askEntry = asks[i].toArray();
+
+        if (rowNum < asks.size()) {
+            QJsonArray askEntry = asks[rowNum].toArray();
             QString askPrice = askEntry[0].toString();
             QString askQty = askEntry[1].toString();
-            mTableWidget->setItem(i, 2, new QTableWidgetItem(askPrice));
-            mTableWidget->setItem(i, 3, new QTableWidgetItem(askQty));
+            askPriceItem = new QTableWidgetItem(askPrice);
+            askQtyItem = new QTableWidgetItem(askQty);
+            mTableWidget->setItem(rowNum, 2, askPriceItem);
+            mTableWidget->setItem(rowNum, 3, askQtyItem);
+        }
+
+        // Highlight the top result
+        if (NotAMagicJustNums::FIRST_ROW == rowNum) {
+            QBrush highlightBrush(Qt::yellow);
+
+            if (bidQtyItem) bidQtyItem->setBackground(highlightBrush);
+            if (bidPriceItem) bidPriceItem->setBackground(highlightBrush);
+            if (askPriceItem) askPriceItem->setBackground(highlightBrush);
+            if (askQtyItem) askQtyItem->setBackground(highlightBrush);
         }
     }
 }

@@ -1,4 +1,6 @@
 #include "CMainWindow.hpp"
+#include "common/consts.hpp"
+
 #include <QVBoxLayout>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -159,7 +161,6 @@ void CMainWindow::onLineEditTextFinished()
     
     if ("" != mTextLine->text()) {
         mIsUserSearch = true;
-        // mTableWidget->setRowCount(0);
         rbTreeSearch(mInstrumentArr);
     } else {
         qDebug() << "Field is empty. No search will be done";
@@ -243,7 +244,8 @@ void CMainWindow::onTableCellClicked(int row, int /*column*/)
 
     unsubscribeFromOrderBook(mOrderBookInstId);
 
-    QTableWidgetItem* item = mTableWidget->item(row, 0);
+    QTableWidgetItem* item =
+        mTableWidget->item(row, NotAMagicJustNums::FIRST_COLUMN);
     
     mOrderBookInstId = item->text();
 
@@ -280,7 +282,7 @@ void CMainWindow::startInternalTimer()
 
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &CMainWindow::onInternalTimerTick);
-    timer->start(1000);
+    timer->start(NotAMagicJustNums::ONE_SECOND);
 
     qDebug() << "Internal timer started";
 }

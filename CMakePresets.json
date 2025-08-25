@@ -8,19 +8,12 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_PREFIX_PATH": "D:/UserPrograms/Qt/6.9.1/mingw_64/lib/cmake",
-                "CMAKE_TOOLCHAIN_FILE": {
-                    "value": "D:/CXX_Projects/vcpkg/scripts/buildsystems/vcpkg.cmake",
-                    "type": "FILEPATH"
-                },
-                "CMAKE_MAKE_PROGRAM": "D:/UserPrograms/Qt/Tools/Ninja/ninja.exe",
+                "CMAKE_PREFIX_PATH": "${sourceDir}/../Qt/6.9.1/mingw_64/lib/cmake",
+                "CMAKE_MAKE_PROGRAM": "${sourceDir}/../Qt/Tools/Ninja/ninja.exe",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/build",
                 "CMAKE_C_COMPILER": "gcc",
                 "CMAKE_CXX_COMPILER": "g++"
             }
-            // "environment": {
-            //     "PATH": "D:/UserPrograms/Qt/Tools/mingw1310_64/bin;${env.PATH}"
-            // }
         }
     ],
     "buildPresets": [
