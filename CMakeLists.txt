@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(okx_price_viewer VERSION 1.0)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (MSVC)
@@ -13,7 +13,7 @@ endif()
 
 #find_package(Vulkan REQUIRED)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network WebSockets)
 
 find_package(cpr CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -24,9 +24,11 @@ qt_standard_project_setup()
 
 qt_add_executable(okx_price_viewer
     source/main.cpp
-    source/MainWindow.cpp
-    source/MainWindow.h
-    source/MainWindow.ui
+    source/CMainWindow.cpp
+    source/CMainWindow.hpp
+    #source/CCryptoPair.hpp
+    #source/ui/MainWindow.ui
+    #source/ui/CryptoPairWindow.ui
 )
 
 target_link_libraries(
@@ -36,7 +38,8 @@ target_link_libraries(
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
+    Qt6::WebSockets
     #Vulkan::Vulkan
-    #cpr::cpr
-    #nlohmann_json::nlohmann_json
+    cpr::cpr
+    nlohmann_json::nlohmann_json
 )
